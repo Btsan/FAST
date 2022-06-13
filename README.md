@@ -5,7 +5,7 @@ Reimplementation of the original work at https://github.com/LLNL/FAST. Predictin
 Using SMILES string or [rdkit descriptors](https://www.rdkit.org/docs/source/rdkit.ML.Descriptors.MoleculeDescriptors.html) of ligands.
 
 ### Task 2
-Using 3D ligand data. Sample code for reading HDF5 data is [available](data/ligands.py).
+Using 3D ligand data. Sample code for reading HDF5 data is [available](./example.py).
 
 In the original paper:
 - 3D Convolution networks are used on a voxelized representation of ligands.
