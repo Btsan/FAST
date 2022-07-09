@@ -1,9 +1,3 @@
-import os
-import sys
-import math
-import numbers
-import numpy as np
-import scipy as sp
 import torch
 import torch.nn as nn
 
@@ -11,13 +5,19 @@ import torch.nn as nn
 
 class Model_3DCNN(nn.Module):
 
+    """
+    A three-dimensional convolutional neural network.
+    
+    """
+
     # num_filters=[64,128,256] or [96,128,128]
-    def __init__(self, feat_dim=19, output_dim=1, num_filters=[64,128,256], use_cuda=True, verbose=0):
+    def __init__(self, feat_dim=19, output_dim=1, num_classes=2, num_filters=[64,128,256], use_cuda=True, verbose=0):
         super(Model_3DCNN, self).__init__()
 
         self.feat_dim = feat_dim
         self.output_dim = output_dim
-        self.num_filters = num_filters,
+        self.num_classes = num_classes
+        self.num_filters = num_filters
         self.use_cuda = use_cuda
         self.verbose = verbose
 
@@ -34,7 +34,7 @@ class Model_3DCNN(nn.Module):
         self.fc1 = nn.Linear(2048, 100)
         torch.nn.init.normal_(self.fc1.weight, 0, 1)
         self.fc1_bn = nn.BatchNorm1d(num_features=100, affine=True, momentum=0.1).train()
-        self.fc2 = nn.Linear(100, 1)
+        self.fc2 = nn.Linear(100, self.num_classes) 
         torch.nn.init.normal_(self.fc2.weight, 0, 1)
         self.relu = nn.ReLU()
         #self.drop=nn.Dropout(p=0.15)
