@@ -2,12 +2,12 @@ import torch
 
 def train(
     dataloader, 
-    voxelizer,
-    gaussian_filter,
+    data_transform,
     model,
     loss_fn, 
     optimizer, 
-    device
+    device, 
+    scheduler=None
 ):
 
     """
@@ -16,10 +16,8 @@ def train(
     Args:
         dataloader:
             An instance of Dataloader using the protease train dataset
-        voxelizer: 
-            An instance of Voxelizer3D from voxelizer.py
-        gaussian_filter:
-            An instance of GaussianFilter from gaussian_filter.py
+        data_transform:
+            A data transformation layers that returns voxels from the dataloader
         model:
             An instance of Model_3DCNN from model.py
         loss_fn:
@@ -28,6 +26,9 @@ def train(
             A torch.optim optimizer object
         device:
             expects "cpu" or "cuda" as device specification.
+        scheduler:
+            One may optionally scpecify a scheduler. If not, the it will be set as "None" and will not be updated 
+            in the optimization loop.
 
     Returns:
     --------
@@ -44,6 +45,7 @@ def train(
     # model setup
     model.to(device)
     model.train()
+    vol_dim = data_transform.vol_dim
 
     for batch_idx, batch_data in enumerate(dataloader):
 
@@ -51,14 +53,7 @@ def train(
         inputs_cpu, labels_cpu = batch_data
         inputs, labels = inputs_cpu.to(device), labels_cpu.to(device)
 
-        # loop over individual batch elements
-        vol_batch = torch.zeros( (batch_size,19,48,48,48), dtype=torch.float, device=device)
-        for i in range(inputs.shape[0]):
-            xyz, feat = inputs[i,:,:3], inputs [i,:,3:]
-            vol_batch[i,:,:,:,:] = voxelizer(xyz,feat)
-
-        # forward step     
-        vol_batch = gaussian_filter(vol_batch)
+        vol_batch = data_transform(inputs)
         pred, _ = model(vol_batch)
         loss = loss_fn(pred, labels)
         loss_record = loss.cpu().data.item()
@@ -69,8 +64,11 @@ def train(
         loss.backward()
         optimizer.step()
 
+        if scheduler is not None:
+            scheduler.step()
 
-        if batch_idx % 100 == 0:
+
+        if batch_idx % 50 == 0:
             current = batch_idx*len(inputs)
             print(f"loss: {loss_record:>7f} [{current:>5d}/{size:>5d}]")
         
@@ -80,8 +78,7 @@ def train(
 
 def validate(
     dataloader, 
-    voxelizer,
-    gaussian_filter,
+    data_transform,
     model,
     loss_fn,  
     device
@@ -93,16 +90,12 @@ def validate(
     Args:
         dataloader:
             An instance of Dataloader using the protease train dataset,
-        voxelizer: 
-            An instance of Voxelizer3D from voxelizer.py
-        gaussian_filter:
-            An instance of GaussianFilter from gaussian_filter.py
+        data_transform:
+            A data transformation layers that returns voxels from the dataloader
         model:
             An instance of Model_3DCNN from model.py
         loss_fn:
             A torch.nn loss function object.
-        optimizer:
-            A torch.optim optimizer object.
         device:
             expects "cpu" or "cuda" as device specification.
 
@@ -132,19 +125,15 @@ def validate(
 
         # loop over individual batch elements
         with torch.no_grad():
-
-            vol_batch = torch.zeros( (batch_size,19,48,48,48), dtype=torch.float, device=device)
-            for i in range(inputs.shape[0]):
-                xyz, feat = inputs[i,:,:3], inputs [i,:,3:]
-                vol_batch[i,:,:,:,:] = voxelizer(xyz,feat)
-
+            
+            vol_batch = data_transform(inputs)
+            
             # forward step     
-            vol_batch = gaussian_filter(vol_batch)
             pred, _ = model(vol_batch)
             loss = loss_fn(pred, labels)
             avg_loss += loss.cpu().data.item()
 
-            correct += (pred.argmax(1) == labels).type(torch.float).sum().item()
+            accuracy += (pred.argmax(1) == labels).type(torch.float).sum().item()
 
     avg_loss /= num_batches   
     accuracy /= size
