@@ -97,7 +97,7 @@ for epoch in range(epochs):
     print(f"Epoch {epoch+1}\n-------------------------------")
     
     
-    losses = train(
+    losses, train_accuracy = train(
     train_dataloader, 
     data_transform,
     model,
