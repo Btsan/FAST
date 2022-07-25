@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
 
 import torch
 from torch import Tensor
@@ -12,10 +10,6 @@ from torch_geometric.utils import softmax #scatter_
 #from torch_geometric.utils import softmax
 #from torch_scatter import scatter as scatter_
 from torch_geometric.nn.inits import uniform, reset
-
-
-# In[ ]:
-
 
 class GatedGraphConv(MessagePassing):
     def __init__(self, out_channels, num_layers, edge_network, aggr="add", bias=True):
@@ -39,7 +33,7 @@ class GatedGraphConv(MessagePassing):
 
     def forward(self, x, edge_index, edge_attr):
         h = x if x.dim() == 2 else x.unsqueeze(-1)
-        assert h.size(1) <= self.out_channels
+        #assert h.size(1) <= self.out_channels
 
         if h.size(1) < self.out_channels:
             zero = h.new_zeros(h.size(0), self.out_channels - h.size(1))
@@ -63,9 +57,6 @@ class GatedGraphConv(MessagePassing):
         return "{}({}, num_layers={})".format(
             self.__class__.__name__, self.out_channels, self.num_layers
         )
-
-
-# In[ ]:
 
 
 class PotentialNetAttention(torch.nn.Module):
