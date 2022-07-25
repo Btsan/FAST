@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[9]:
-
-
 import torch
 import torch.nn as nn # neural network library 
 import torch.nn.functional as F 
@@ -28,9 +25,6 @@ from torch_sparse import coalesce
 from torch_geometric.nn.pool import avg_pool_x
 
 
-# In[ ]:
-
-
 class PotentialNetPropagation(torch.nn.Module):
     """
     Creating the neural network propagator  
@@ -47,7 +41,7 @@ class PotentialNetPropagation(torch.nn.Module):
     def __init__(
         self, 
         feat_size=19, 
-        gather_width=64, 
+        gather_width=32, 
         k=2, 
         neighbor_threshold=None, 
         output_pool_result=False, 
@@ -159,6 +153,8 @@ class PotentialNetFullyConnected(torch.nn.Module):
         self.output = nn.Sequential(
             nn.Linear(in_channels, int(in_channels / 1.5)), 
             nn.ReLU(), 
+            nn.Linear(int(in_channels / 1.5), in_channels),
+            nn.ReLU, ## Added this section so lets see.
             nn.Linear(int(in_channels / 1.5), int(in_channels / 2)), 
             nn.ReLU(), 
             nn.Linear(int(in_channels / 2), out_channels),
@@ -168,9 +164,6 @@ class PotentialNetFullyConnected(torch.nn.Module):
             return self.output[:2](data), self.output[:-4](data), self.output(data)
         else:
             return self.output(data)
-
-
-# In[ ]:
 
 
 class PotentialNetParallel(torch.nn.Module):
