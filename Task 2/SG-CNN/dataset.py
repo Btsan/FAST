@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[2]:
-
 
 from torch.utils.data import Dataset # load dataset
 import h5py # data reader for hdf5 files 
@@ -10,9 +8,6 @@ from torch_geometric.data import DataLoader as GeometricDataLoader
 from tqdm import tqdm
 from torch_geometric.utils import dense_to_sparse
 from torch_geometric.data import Data, Batch
-
-
-# In[ ]:
 
 
 class PosteraDataset(Dataset):
@@ -28,11 +23,11 @@ class PosteraDataset(Dataset):
     
     """
     
-    def __init__(self, file_path, h5_file_driver=False, cache_data=True, features=True
+    def __init__(self, file_path, cache_data=True, features=True
     ):
         super(PosteraDataset, self).__init__()
         self.file_path = file_path
-        self.file = h5py.File(self.file_path, 'r', driver=self.h5_file_driver) #reading files
+        self.file = h5py.File(self.file_path, 'r') #reading files
         self.molecule_name = list(self.file.keys()) 
         
         self.data_dict = {} #store data if cache_data=True
