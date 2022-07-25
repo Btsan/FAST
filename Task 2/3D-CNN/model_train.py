@@ -64,9 +64,9 @@ if use_cuda:
 else:
     device = torch.device("cpu")
 
-print(f"Use Cuda: {use_cuda}, Device count: {cuda_count}, Device selected: {device} ")
+print(f"Use Cuda: {use_cuda}, Device count: {cuda_count}, Device selected: {device}.\n")
 
-data_transform = VoxelTransform(batch_size=args.batch_size,vol_dim=32,use_cuda=use_cuda)
+data_transform = VoxelTransform(batch_size=args.batch_size,vol_dim=48,use_cuda=use_cuda)
 model = CNN3D(num_classes=2,verbose=0)
 
 """
