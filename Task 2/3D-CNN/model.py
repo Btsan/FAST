@@ -36,12 +36,11 @@ class CNN3D(nn.Module):
         self.pool_dim = floor(self.conv_dim_two/2)
         self.lin_dim = ((self.pool_dim) ** 3) * self.num_filters[1] 
 
-
         self.conv_block_one = self.__conv_layer_set__(self.feat_dim, self.num_filters[0], 7, 3, 3)
         self.conv_block_two = self.__conv_layer_set__(self.num_filters[0], self.num_filters[1], 5, 2, 2)
 
         self.res_block_one =  self.__conv_layer_set__(self.num_filters[0], self.num_filters[0], 7, 1, 3)
-        #self.res_block_two =  self.__conv_layer_set__(32, 32, 7, 1, 3)
+        # self.res_block_two =  self.__conv_layer_set__(self.num_filters[0], self.num_filters[0], 7, 1, 3)
 
         self.pool = nn.MaxPool3d(2)
 
@@ -74,8 +73,8 @@ class CNN3D(nn.Module):
         if self.verbose:
             print(r.shape)
 
-        #r = self.res_block_two(r + x)
-        #if self.verbose:
+        # r = self.res_block_two(r + x)
+        # if self.verbose:
         #   print(r.shape)
 
         x = self.conv_block_two(x+r)

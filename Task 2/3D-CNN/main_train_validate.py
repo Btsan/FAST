@@ -1,8 +1,7 @@
 import torch
 
 def train(
-    dataloader, 
-    data_transform,
+    dataloader,
     model,
     loss_fn, 
     optimizer, 
@@ -45,18 +44,17 @@ def train(
     # model setup
     model.to(device)
     model.train()
-    vol_dim = data_transform.vol_dim
 
     for batch_idx, batch_data in enumerate(dataloader):
 
         # pass inputs and labels to gpu
         inputs_cpu, labels_cpu = batch_data
+        print(inputs_cpu.shape)
         inputs, labels = inputs_cpu.to(device), labels_cpu.to(device)
 
-        vol_batch = data_transform(inputs)
-        pred, _ = model(vol_batch)
+        pred, _ = model(inputs)
         loss = loss_fn(pred, labels)
-        loss_record = loss.cpu().data.item()
+        loss_record = loss.item()
         losses.append(loss_record)
 
         # backward step 
@@ -64,13 +62,12 @@ def train(
         loss.backward()
         optimizer.step()
 
-        if scheduler is not None:
+        if scheduler:
             scheduler.step()
-
 
         if batch_idx % 50 == 0:
             current = batch_idx*len(inputs)
-            print(f"loss: {loss_record:>7f} [{current:>5d}/{size:>5d}]")
+            print(f"\t training loss: {loss_record:>7f} [{current:>5d}/{size:>5d}]")
         
     return losses
 
@@ -114,28 +111,23 @@ def validate(
     num_batches = len(dataloader)
 
     # setup model
-    model.eval()
     model.to(device)
+    with torch.inference_mode():
+        for batch_idx, batch_data in enumerate(dataloader):
 
-    for batch_idx, batch_data in enumerate(dataloader):
-
-        # pass inputs and labels to gpu
-        inputs_cpu, labels_cpu = batch_data
-        inputs, labels = inputs_cpu.to(device), labels_cpu.to(device)
-
-        # loop over individual batch elements
-        with torch.no_grad():
-            
-            vol_batch = data_transform(inputs)
+            # pass inputs and labels to gpu
+            inputs_cpu, labels_cpu = batch_data
+            inputs, labels = inputs_cpu.to(device), labels_cpu.to(device)
             
             # forward step     
-            pred, _ = model(vol_batch)
+            pred, _ = model(inputs)
             loss = loss_fn(pred, labels)
-            avg_loss += loss.cpu().data.item()
+            avg_loss += loss.item()
 
             accuracy += (pred.argmax(1) == labels).type(torch.float).sum().item()
 
-    avg_loss /= num_batches   
-    accuracy /= size
-    print(f"Validation Error:\n Accuracy: {(100*accuracy):>0.1f} %, Avg loss:{avg_loss:>8f} \n")
+        avg_loss /= num_batches   
+        accuracy /= size
+        print(f"\t validation error:\n\t Accuracy: {(100*accuracy):>0.1f}, \tAvg loss:{avg_loss:>8f}")
+
     return avg_loss, accuracy
