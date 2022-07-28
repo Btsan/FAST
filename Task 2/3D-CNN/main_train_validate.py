@@ -1,3 +1,5 @@
+from time import time
+
 import torch
 
 def train(
@@ -45,12 +47,12 @@ def train(
     model.to(device)
     model.train()
 
+    ts = time()
     for batch_idx, batch_data in enumerate(dataloader):
 
         # pass inputs and labels to gpu
-        inputs_cpu, labels_cpu = batch_data
-        print(inputs_cpu.shape)
-        inputs, labels = inputs_cpu.to(device), labels_cpu.to(device)
+        inputs, labels = batch_data
+        inputs, labels = inputs.to(device), labels.to(device)
 
         pred, _ = model(inputs)
         loss = loss_fn(pred, labels)
@@ -67,15 +69,15 @@ def train(
 
         if batch_idx % 50 == 0:
             current = batch_idx*len(inputs)
-            print(f"\t training loss: {loss_record:>7f} [{current:>5d}/{size:>5d}]")
+            print(f"\t training loss: {loss_record:>7f} [{current:>5d}/{size:>5d}] ({(time() - ts):>5.2f}s)")
+            ts = time()
         
     return losses
 
 
 
 def validate(
-    dataloader, 
-    data_transform,
+    dataloader,
     model,
     loss_fn,  
     device

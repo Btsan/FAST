@@ -29,6 +29,7 @@ if __name__ == '__main__':
     parser.add_argument("--train-set", type=str, default='datasets/postera_protease2_pos_neg_train.hdf5')
     parser.add_argument("--val-set", type=str, default='datasets/postera_protease2_pos_neg_val.hdf5')
     parser.add_argument("--model_name", type=str, default='3DCNN_model')
+    parser.add_argument("--device", type=str, default='cuda')
     parser.add_argument("--checkpoint", type=str, default=None)
     args = parser.parse_args()
 
@@ -46,7 +47,7 @@ if __name__ == '__main__':
         drop_last=True,
         num_workers=0,
         )
-    print(train_data[0][0].shape)
+    print(f'{train_data.feat_dim} features')
 
     val_batch_size = args.batch_size
     print(f'validation dataset {args.val_set}')
@@ -63,11 +64,11 @@ if __name__ == '__main__':
     """
     Set model instances.
     """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     print(f"Device count: {torch.cuda.device_count()}, Device selected: {device} ")
 
     # data_transform = VoxelTransform(batch_size=args.batch_size,vol_dim=64,use_cuda=use_cuda)
-    model = CNN3D(num_classes=2,verbose=0,vol_dim=64)
+    model = CNN3D(feat_dim=train_data.feat_dim, num_classes=2, verbose=0, vol_dim=64)
 
     """
     Set Training objects.
@@ -102,8 +103,8 @@ if __name__ == '__main__':
 
     for epoch in range(args.epoch_count):
         print(f"Epoch {epoch+1}\n-------------------------------")
-        
-        losses, train_accuracy = train(
+
+        losses = train(
             train_dataloader, 
             model,
             loss_fn, 

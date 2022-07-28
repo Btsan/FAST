@@ -96,6 +96,7 @@ class VoxelDataset(Dataset):
             kernel = kernel.view(1, 1, *kernel.size()) #-> doesn't need to add one more axis
             #kernel = kernel.view(1, *kernel.size())
             self.kernel = kernel.repeat(self.feat_dim, *[1] * (kernel.dim() - 1))
+            self.kernel = self.kernel.cuda()
         
     def __len__(self):
         """ 
@@ -115,7 +116,7 @@ class VoxelDataset(Dataset):
 
         mask = (coords[:,0] != 0) & (coords[:,1] != 0) & (coords[:,2] != 0)
         coords = coords[mask]
-        features = torch.tensor(features[mask])
+        features = torch.tensor(features[mask]).cuda()
 
         # get 3d bounding box
         xmin, ymin, zmin = min(coords[:,0]), min(coords[:,1]), min(coords[:,2])
@@ -130,7 +131,7 @@ class VoxelDataset(Dataset):
             xmax, ymax, zmax = xmid + (self.ang_size / 2), ymid + (self.ang_size / 2), zmid + (self.ang_size / 2)
 
         # initialize vol data
-        vol_data = torch.zeros((self.vol_dim, self.vol_dim, self.vol_dim, self.feat_dim), dtype=torch.float32)
+        vol_data = torch.zeros((self.vol_dim, self.vol_dim, self.vol_dim, self.feat_dim), dtype=torch.float32, device=torch.device('cuda'))
 
         # assign each atom to voxels
         for ind in range(coords.shape[0]):
