@@ -1,16 +1,23 @@
-from torch.utils.data import Dataset
+import math
+
 import h5py
+import torch
+import torch.nn.functional as F
+from torch.utils.data import Dataset
+
+
 
 class LigandDataset(Dataset):
     """
     Custom Dataset object that opens the file path for the postera_protease2 datasets. 
     """
-    def __init__(self, hdf_path, parse_features=False):
+    def __init__(self, file_path):
         super().__init__()
-        self.hdf_path = hdf_path
-        self.file = h5py.File(self.hdf_path,"r")
-        self.ligand_names = list(self.file.keys())
-        self.parse_features = parse_features
+        self.file_path = file_path
+        self.file = None
+        with h5py.File(self.file_path,"r") as file:
+            self.ligand_names = list(file.keys())
+        
         
     def __len__(self):
         """ 
@@ -22,14 +29,10 @@ class LigandDataset(Dataset):
         """
         Returns coordinates and/or features as well as labels for each ligand pose.
         """
+        if self.file is None:
+            self.file = h5py.File(self.file_path,"r")
         name = self.ligand_names[index]
-        ligand = self.file[name]["ligand"]
-        label = self.file[name].attrs["label"]
-        
-        
-        if self.parse_features:
-            coordinates = ligand[:,:3]
-            features = ligand[:,3:]
-            return coordinates, features, label
-        else:
-            return ligand[:], label
+        ligand = torch.tensor(self.file[name]["ligand"][:])
+        label = torch.tensor(self.file[name].attrs["label"])
+
+        return ligand, label

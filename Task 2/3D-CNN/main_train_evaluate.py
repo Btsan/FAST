@@ -7,7 +7,8 @@ def train(
     loss_fn, 
     optimizer, 
     device, 
-    scheduler=None
+    scheduler=None,
+    verbose=True
 ):
 
     """
@@ -33,14 +34,15 @@ def train(
     Returns:
     --------
     losses: 
-        A list of losses from each batch computation. 
+        A list of losses from each batch computations. 
 
     """
 
     # initialize batch data
-    size = len(dataloader.dataset)
     batch_size = dataloader.batch_size
+    size = len(dataloader)*batch_size
     losses = [] 
+    accuracy = 0.0
     
     # model setup
     model.to(device)
@@ -52,9 +54,8 @@ def train(
         # pass inputs and labels to gpu
         inputs_cpu, labels_cpu = batch_data
         inputs, labels = inputs_cpu.to(device), labels_cpu.to(device)
-
-        vol_batch = data_transform(inputs)
-        pred, _ = model(vol_batch)
+        inputs = data_transform(inputs)
+        pred, _ = model(inputs)
         loss = loss_fn(pred, labels)
         loss_record = loss.cpu().data.item()
         losses.append(loss_record)
@@ -72,20 +73,29 @@ def train(
             current = batch_idx*len(inputs)
             print(f"loss: {loss_record:>7f} [{current:>5d}/{size:>5d}]")
         
-    return losses
+        with torch.no_grad():
+            accuracy += (pred.argmax(1) == labels).type(torch.float).sum().item()
+
+    accuracy /= size
+
+    if verbose:
+        print(f"Training Accuracy: {(100*accuracy):>0.1f} %\n")
+
+    return losses, accuracy
 
 
 
-def validate(
+def evaluate(
     dataloader, 
     data_transform,
     model,
     loss_fn,  
-    device
+    device,
+    verbose=True
 ):
 
     """
-    Primary Validation function.
+    Primary evaluation function.
 
     Args:
         dataloader:
@@ -107,8 +117,8 @@ def validate(
         The percent of correct classifications made on the valiation set.
     """
     # initialize loop
-    size = len(dataloader.dataset)
     batch_size = dataloader.batch_size
+    size = len(dataloader)*batch_size
     avg_loss, accuracy = 0.0, 0.0
 
     num_batches = len(dataloader)
@@ -126,10 +136,10 @@ def validate(
         # loop over individual batch elements
         with torch.no_grad():
             
-            vol_batch = data_transform(inputs)
+            inputs = data_transform(inputs)
             
             # forward step     
-            pred, _ = model(vol_batch)
+            pred, _ = model(inputs)
             loss = loss_fn(pred, labels)
             avg_loss += loss.cpu().data.item()
 
@@ -137,5 +147,7 @@ def validate(
 
     avg_loss /= num_batches   
     accuracy /= size
-    print(f"Validation Error:\n Accuracy: {(100*accuracy):>0.1f} %, Avg loss:{avg_loss:>8f} \n")
+    if verbose:
+        print(f"Error:\n Accuracy: {(100*accuracy):>0.1f} %, Avg loss:{avg_loss:>8f} \n")
+
     return avg_loss, accuracy
