@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[3]:
-
-
 import torch 
 import argparse
 from dataset import PosteraDataset
@@ -12,9 +9,6 @@ from torch_geometric.data import DataListLoader
 from torch_geometric.data import DataLoader
 from torch_geometric.nn import DataParallel
 import tqdm
-
-
-# In[ ]:
 
 
 parser = argparse.ArgumentParser()
@@ -35,18 +29,12 @@ parser.add_argument("--non-covalent-threshold", type=float, default=7.5)
 args=parser.parse_args()
 
 
-# In[ ]:
-
-
 def worker_init_fn(worker_id):
     np.random.seed(int(0))
 
 
 def collate_fn_none_filter(batch):
     return [x for x in batch if x is not None]
-
-
-# In[ ]:
 
 
 def train():
@@ -87,6 +75,9 @@ def train():
             loss = criterion(y.float(), y_.cpu().float())
             losses.append(loss.cpu().data.item())
             loss.backward
-            tqdm.write("epoch:{}\tloss:{:0.4f}".format(epoch, loss.cpu().data.numpy()))
+            tqdm.write("epoch:{}\tloss:{:0.4f}".format(epoch, loss.cpu().data.numpy())) # calculate loss
+            
+            # Add accuracy 
+            
             
 
