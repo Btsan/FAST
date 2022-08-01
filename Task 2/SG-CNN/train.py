@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+## Do not use, for training logistics, use training_utils 
 
 import os
 import itertools
