@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[3]:
-
 
 import os
 import itertools
@@ -28,10 +26,6 @@ from dataset import PosteraDataset
 from sgcnn_model import PotentialNetParallel, GraphThreshold
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import ConcatDataset, SubsetRandomSampler
-
-
-# In[5]:
-
 
 import argparse
 
@@ -82,7 +76,7 @@ def collate_fn_none_filter(batch):
 
 
 def train():
-    feature_size = 75 
+    feature_size = 19
     
     print("found {} datasets in input train-data".format(len(args.train_data)))
     train_dataset_list = []
