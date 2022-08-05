@@ -22,8 +22,8 @@ class PosteraDataset(Dataset):
     features = bool, if true: parse features 
     
     """
-    
-    def __init__(self, file_path, cache_data=True, features=True
+    #cache_data=True
+    def __init__(self, file_path, features=True
     ):
         super(PosteraDataset, self).__init__()
         self.file_path = file_path
@@ -40,7 +40,7 @@ class PosteraDataset(Dataset):
         
         returning the key from the data dictionary if cache_data=True
         
-        """
+        
         if self.cache_data:
             
             if item in self.data_dict.keys(): 
@@ -48,6 +48,7 @@ class PosteraDataset(Dataset):
             
             else: 
                 pass
+        """
         
         name = self.molecule_names[index]
         ligand = self.file[name]["ligand"]
