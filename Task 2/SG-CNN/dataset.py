@@ -33,7 +33,7 @@ class PosteraDataset(Dataset):
         self.data_dict = {} #store data if cache_data=True
         
     def __len__(self):
-        return(len.self.molecule_names) # returning length
+        return(len.self.molecule_name) # returning length
     
     def __getitem__(self, item):
         """
@@ -50,7 +50,7 @@ class PosteraDataset(Dataset):
                 pass
         """
         
-        name = self.molecule_names[index]
+        name = self.molecule_name[index]
         ligand = self.file[name]["ligand"]
         label = self.file[name].attrs["label"]
         
