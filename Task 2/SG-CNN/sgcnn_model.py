@@ -24,13 +24,13 @@ from torch.nn import init
 from torch_sparse import coalesce
 from torch_geometric.nn.pool import avg_pool_x
 
-
 class PotentialNetPropagation(torch.nn.Module):
     """
     Creating the neural network propagator  
     
     args:
 
+    
     feat_size: int, the number of features in each input sample 
     gather_width: int,
     k: int, 
@@ -39,131 +39,128 @@ class PotentialNetPropagation(torch.nn.Module):
     bn_track_running_stats: 
     """
     def __init__(
-        self, 
-        feat_size=19, 
-        gather_width=32, 
-        k=2, 
-        neighbor_threshold=None, 
-        output_pool_result=False, 
-        bn_track_running_stats=False
+        self,
+        feat_size=19,
+        gather_width=64,
+        k=2,
+        neighbor_threshold=None,
+        output_pool_result=False,
+        bn_track_running_stats=False,
     ):
         super(PotentialNetPropagation, self).__init__()
-        
-        self.neighbor_threshold = neighbor_threshold 
+        assert neighbor_threshold is not None
+
+        self.neighbor_threshold = neighbor_threshold
         self.bn_track_running_stats = bn_track_running_stats
-        self.edge_attr_size = 1 
+        self.edge_attr_size = 1
+
         self.k = k
         self.gather_width = gather_width
         self.feat_size = feat_size
-
-        """
-        creating the edge network using a sequential container 
-        
-        
-        """
         self.edge_network_nn = nn.Sequential(
             nn.Linear(self.edge_attr_size, int(self.feat_size / 2)),
             nn.Softsign(),
-            nn.Linear(int(self.feat_size /2), self.feat_size),
+            nn.Linear(int(self.feat_size / 2), self.feat_size),
             nn.Softsign(),
-        )  # softsign applies function (x/(1+|x|)) to the integer calculated by linear transformation
-        
-        self.edgeNnetwork = NNConv(
-            self.feat_size, 
-            self.edge_attr_size * self.feat_size, 
-            nn=self.edge_network_nn, 
-            root_weight=True, 
-            aggr='add'
         )
-        
-        self.gate = PotentialNetAttention(
-            net_i = nn.Sequential(
+
+        self.edge_network = NNConv(
+            self.feat_size,
+            self.edge_attr_size * self.feat_size,
+            nn=self.edge_network_nn,
+            root_weight=True,
+            aggr="add",
+        )
+        self.gate = GatedGraphConv(
+            self.feat_size, self.k, edge_network=self.edge_network
+        )
+
+        self.attention = PotentialNetAttention(
+            net_i=nn.Sequential(
                 nn.Linear(self.feat_size * 2, self.feat_size),
-                nn.Softsign(), 
-                nn.Linear(self.feat_size, self.gather_width), 
                 nn.Softsign(),
-            ), 
-            net_j = nn.Sequential(
-                nn.Linear(self.feat_size, self.gather_width), 
-                nn.Softsign()
+                nn.Linear(self.feat_size, self.gather_width),
+                nn.Softsign(),
+            ),
+            net_j=nn.Sequential(
+                nn.Linear(self.feat_size, self.gather_width), nn.Softsign()
             ),
         )
-        
         self.output_pool_result = output_pool_result
         if self.output_pool_result:
-            self.global_add_pool = global_add_pool 
-    
+            self.global_add_pool = global_add_pool
+
     def forward(self, data, edge_index, edge_attr):
-        """
-        nn propagation
-        
-        might need to fix depending on reading in data 
-        """
+
+        # propagtion
         h_0 = data
         h_1 = self.gate(h_0, edge_index, edge_attr)
         h_1 = self.attention(h_1, h_0)
-        
+
         return h_1
-
-    
-
-
-# In[ ]:
-
 
 class GraphThreshold(torch.nn.Module):
     def __init__(self, t):
         super(GraphThreshold, self).__init__()
-        self.t = nn.Parameter(t, requires_grad) # assuming no cuda, however if cuda, uncomment the below 
-        #self.t = nn.Parameter(t, requires_grad=True).cuda()
-    
+        if torch.cuda.is_available():
+            self.t = nn.Parameter(t, requires_grad=True).cuda()
+        else:
+            self.t = nn.Parameter(t, requires_grad=True)
+
     def filter_adj(self, row, col, edge_attr, mask):
         mask = mask.squeeze()
         return row[mask], col[mask], None if edge_attr is None else edge_attr[mask]
-    
+
     def forward(self, edge_index, edge_attr):
+        """Randomly drops edges from the adjacency matrix
+        :obj:`(edge_index, edge_attr)` with propability :obj:`p` using samples from
+        a Bernoulli distribution.
+        Args:
+            edge_index (LongTensor): The edge indices.
+            edge_attr (Tensor): Edge weights or multi-dimensional
+                edge features. (default: :obj:`None`)
+            force_undirected (bool, optional): If set to :obj:`True`, forces undirected output.
+            (default: :obj:`False`)
+            num_nodes (int, optional): The number of nodes, *i.e.*
+            :obj:`max_val + 1` of :attr:`edge_index`. (default: :obj:`None`)
         """
-        Args: 
-        edge_index: edge indices
-        edge_attr: edge weights or multi-dimensional edge features
-        force_undirected: optional bool, if true it forces undircted output 
-        num_nodes: number of nodes 
-        
-        """
+
         N = maybe_num_nodes(edge_index, None)
-        row, col = edge_index 
-        
-        mask = edge_attri <= self.t
-        
+        row, col = edge_index
+
+        mask = edge_attr <= self.t
+
         row, col, edge_attr = self.filter_adj(row, col, edge_attr, mask)
-        edge_index = torch.stack([torch.cat([row, col], dim=0), torch.cat([col, row], dim=0)], dim=0)
+
+        edge_index = torch.stack(
+            [torch.cat([row, col], dim=0), torch.cat([col, row], dim=0)], dim=0
+        )
         edge_attr = torch.cat([edge_attr, edge_attr], dim=0)
         edge_index, edge_attr = coalesce(edge_index, edge_attr, N, N)
-        
+
         return edge_index, edge_attr
 
-
-# In[ ]:
 
 
 class PotentialNetFullyConnected(torch.nn.Module):
     def __init__(self, in_channels, out_channels):
-        super(potentialNetFullyConnected, self).__init__()
-        
+        super(PotentialNetFullyConnected, self).__init__()
+
         self.output = nn.Sequential(
-            nn.Linear(in_channels, int(in_channels / 1.5)), 
-            nn.ReLU(), 
-            nn.Linear(int(in_channels / 1.5), in_channels),
-            nn.ReLU, ## Added this section so lets see.
-            nn.Linear(int(in_channels / 1.5), int(in_channels / 2)), 
-            nn.ReLU(), 
+            nn.Linear(in_channels, int(in_channels / 1.5)),
+            nn.ReLU(),
+            nn.Linear(int(in_channels / 1.5), int(in_channels / 2)),
+            nn.ReLU(),
             nn.Linear(int(in_channels / 2), out_channels),
         )
+
     def forward(self, data, return_hidden_feature=False):
+
         if return_hidden_feature:
-            return self.output[:2](data), self.output[:-4](data), self.output(data)
+            return self.output[:-2](data), self.output[:-4](data), self.output(data)
         else:
             return self.output(data)
+
 
 
 class PotentialNetParallel(torch.nn.Module):
@@ -178,49 +175,68 @@ class PotentialNetParallel(torch.nn.Module):
         covalent_neighbor_threshold=None,
         non_covalent_neighbor_threshold=None,
         always_return_hidden_feature=False,
+        device_ids=None
     ):
         super(PotentialNetParallel, self).__init__()
-        
-        self.covalent_neighbor_threshold = GraphThreshold(
-            torch.ones(1) * covalent_neighbor_threshold)
-        """
-        if using cuda: 
-        self.covalent_neighbor_threshold = GraphThreshold(
-        torch.ones(1).cuda() * covalent_neighbor_threshold)
-        """
-        self.non_covalent_neighbor_threshold = GraphThreshold(
-            torch.ones(1) * non_covalent_neighborhood)
-        """
-        if using cuda 
-        self.non_covalent_neighbor_threshold = GraphThreshold(
-        torch.ones(1).cuda() * non_covalent_neighbor_threshold)
-        """
+
+        assert (
+            covalent_neighbor_threshold is not None
+            and non_covalent_neighbor_threshold is not None
+        )
+
+        if torch.cuda.is_available():
+            self.covalent_neighbor_threshold = GraphThreshold(
+                torch.ones(1).cuda() * covalent_neighbor_threshold
+         )
+        else:
+            self.covalent_neighbor_threshold = GraphThreshold(
+                torch.ones(1) * covalent_neighbor_threshold
+        )
+
+        if torch.cuda.is_available():
+            self.non_covalent_neighbor_threshold = GraphThreshold(
+                torch.ones(1).cuda() * non_covalent_neighbor_threshold
+            )  # need to add params for upper/lower covalent/non_covalent_t
+        else:
+            self.non_covalent_neighbor_threshold = GraphThreshold(
+                torch.ones(1) * non_covalent_neighbor_threshold
+            )
+
         self.always_return_hidden_feature = always_return_hidden_feature
-        
+
         self.global_add_pool = global_add_pool
-        
+
         self.covalent_propagation = PotentialNetPropagation(
-            feat_size=in_channels, 
-            gather_width=covalent_gather_width, 
-            neighbor_threshold=self.covalent_neighbor_threshold, 
+            feat_size=in_channels,
+            gather_width=covalent_gather_width,
+            neighbor_threshold=self.covalent_neighbor_threshold,
+            k=covalent_k,
+        )
+
+        self.non_covalent_propagation = PotentialNetPropagation(
+            feat_size=covalent_gather_width,
+            gather_width=non_covalent_gather_width,
+            neighbor_threshold=self.non_covalent_neighbor_threshold,
             k=non_covalent_k,
         )
-        self.global_add_pool = global_add_pool 
-        self.output = PotentialNetFullyConnected(non_covalent_gather_width, out_channels)
-        
+
+        self.global_add_pool = global_add_pool
+
+        self.output = PotentialNetFullyConnected(
+            non_covalent_gather_width, out_channels
+        )
+
     def forward(self, data, return_hidden_feature=False):
-        
-        """
-        if using torch cuda
-        
+
+        #import pdb
+        #pdb.set_trace()
         if torch.cuda.is_available():
             data.x = data.x.cuda()
             data.edge_attr = data.edge_attr.cuda()
             data.edge_index = data.edge_index.cuda()
             data.batch = data.batch.cuda()
-        
-        """
-        
+
+        # make sure that we have undirected graph
         if not is_undirected(data.edge_index):
             data.edge_index = to_undirected(data.edge_index)
 
@@ -266,7 +282,7 @@ class PotentialNetParallel(torch.nn.Module):
         else:
             return self.output(pool_x)
 
-
+            
             
             
 
