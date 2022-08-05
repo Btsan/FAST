@@ -48,7 +48,7 @@ def train():
     # can add drop_last=True in the instance of shuffling dataset
     val_dataloader = DataListLoader(val_dataset, batch_size=val_bs, shuffle=False, worker_init_fn=worker_init_fn)
     
-    model = DataParallel(PotentialNetParallel(
+    model = (PotentialNetParallel(
         in_channels=args.feature_size,
         out_channels=1,
         covalent_gather_width=args.covalent_gather_width,
@@ -57,25 +57,45 @@ def train():
         non_covalent_k=args.non_covalent_k,
         covalent_neighbor_threshold=args.covalent_threshold,
         non_covalent_neighbor_threshold=args.non_covalent_threshold,)).float()
-        
+    
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    
+    model.to(device)
+    
     model.train()
-    criterion = nn.MSELoss().float()
-    optimizer = Adam(model.parameters(), lr=args.lr)
-    for epoch in range(args.epochs):
-        losses = []
-        for batch in tqdm(train_dataloader):
-            batch = [x for x in batch if x is not None]
-            if len(batch) <1: 
-                print('empty, moving to next batch')
-                continue
-            optimizer.zero_grad()
-            data = [x[2] for x in batch]
-            y_ = model(data)
-            y = torch.cat([x[2].y for x in batch])
-            loss = criterion(y.float(), y_.cpu().float())
-            losses.append(loss.cpu().data.item())
-            loss.backward
-            tqdm.write("epoch:{}\tloss:{:0.4f}".format(epoch, loss.cpu().data.numpy())) # calculate loss
+    
+    running_loss=0
+    correct=0
+    total=0
+    
+    for batch in tqdm(train_dataloader):
+        batch = [x for x in batch if x is not None]
+        optimizer.zero_grad()
+        
+        data = [x[2] for x in batch]
+        y_ = model(data)
+        y = torch.cat([x[2].y for x in batch])
+        
+        loss = criterion(y.float(), y_cpu().float())
+        losses.append(loss.cpu().data.item())
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+    
+        _, predicted = outputs.max(1)
+        total += labels.size(0)
+        correct += predicted.eq(labels).sum().item()
+      
+        train_loss=running_loss/len(trainloader)
+        accu=100.*correct/total
+
+        train_accu.append(accu)
+        train_losses.append(train_loss)
+        print('Train Loss: %.3f | Accuracy: %.3f'%(train_loss,accu))
+
+    # calculate loss
+
             
             # Add accuracy 
             
