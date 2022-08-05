@@ -112,18 +112,6 @@ class GraphThreshold(torch.nn.Module):
         return row[mask], col[mask], None if edge_attr is None else edge_attr[mask]
 
     def forward(self, edge_index, edge_attr):
-        """Randomly drops edges from the adjacency matrix
-        :obj:`(edge_index, edge_attr)` with propability :obj:`p` using samples from
-        a Bernoulli distribution.
-        Args:
-            edge_index (LongTensor): The edge indices.
-            edge_attr (Tensor): Edge weights or multi-dimensional
-                edge features. (default: :obj:`None`)
-            force_undirected (bool, optional): If set to :obj:`True`, forces undirected output.
-            (default: :obj:`False`)
-            num_nodes (int, optional): The number of nodes, *i.e.*
-            :obj:`max_val + 1` of :attr:`edge_index`. (default: :obj:`None`)
-        """
 
         N = maybe_num_nodes(edge_index, None)
         row, col = edge_index
@@ -228,8 +216,6 @@ class PotentialNetParallel(torch.nn.Module):
 
     def forward(self, data, return_hidden_feature=False):
 
-        #import pdb
-        #pdb.set_trace()
         if torch.cuda.is_available():
             data.x = data.x.cuda()
             data.edge_attr = data.edge_attr.cuda()
@@ -240,7 +226,7 @@ class PotentialNetParallel(torch.nn.Module):
         if not is_undirected(data.edge_index):
             data.edge_index = to_undirected(data.edge_index)
 
-        # make sure that nodes can propagate messages to themselves
+       
         if not contains_self_loops(data.edge_index):
             data.edge_index, data.edge_attr = add_self_loops(
                 data.edge_index, data.edge_attr.view(-1)
@@ -264,7 +250,7 @@ class PotentialNetParallel(torch.nn.Module):
             covalent_x, non_covalent_edge_index, non_covalent_edge_attr
         )
 
-        # zero out the protein features then do ligand only gather...hacky sure but it gets the job done
+        
         non_covalent_ligand_only_x = non_covalent_x
         non_covalent_ligand_only_x[data.x[:, 14] == -1] = 0
         pool_x = self.global_add_pool(non_covalent_ligand_only_x, data.batch)
