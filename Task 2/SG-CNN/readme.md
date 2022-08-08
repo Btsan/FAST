@@ -13,3 +13,5 @@ model.py - contains the sgnn model
 main.py - main training script.
 
 To change dataset access location and/or data file name, go to main.py, line 144-146 under setup_loaders and change the root and hdf5_file_name. 
+
+To execute the script, locate your terminal and activate the virtual environment you have the required libraries ``` conda activate my-rdkit-env ``` (replace my-rdkit-env with your designated venv). After activating, run python main.py! 
