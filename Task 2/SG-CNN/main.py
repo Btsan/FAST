@@ -207,7 +207,7 @@ if __name__ == "__main__":
     parser["Learning Rate"] = 0.01
 
 
-    parser["Number of Epochs"] = 5
+    parser["Number of Epochs"] = 50
     parser["lambda_dict"]= {"data": 1.0, "l2": 0.003}
 
 
