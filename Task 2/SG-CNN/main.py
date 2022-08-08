@@ -201,7 +201,7 @@ if __name__ == "__main__":
     parser["Pooling Activation"] = "elu"
     parser["Linear Widths"] = [35, 15, 1]
     parser["Linear Activation"]  = "elu"
-    parser["Output Activation"]= "relu"
+    parser["Output Activation"]= "sigmoid"
 
 
     parser["Learning Rate"] = 0.01
